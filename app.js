@@ -4,10 +4,14 @@ const express = require('express'),
   port = process.env.PORT || 3000,
   //Task = require('./api/models/todoListModel'), //created model loading here
   bodyParser = require('body-parser'),
-  cookieparser = require('cookie-parser');
+  cookiesession = require('cookie-session');
 
+app.use(cookiesession({
+  name: "SASS Tagging Session",
+  keys: ["AKey"],
 
-app.use(cookieparser());
+  maxAge: 10 * 1000
+}));
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
