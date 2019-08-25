@@ -5,12 +5,10 @@ const express = require('express'),
   //Task = require('./api/models/todoListModel'), //created model loading here
   bodyParser = require('body-parser'),
   cookiesession = require('cookie-session');
-
+  
 app.use(cookiesession({
   name: "SASS Tagging Session",
   keys: ["AKey"],
-
-  maxAge: 10 * 1000
 }));
 
 app.use(bodyParser.urlencoded({ extended: true }));
