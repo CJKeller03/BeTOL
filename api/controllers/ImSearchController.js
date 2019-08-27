@@ -3,8 +3,8 @@
 const fs = require("fs");
 const path = require('path');
 const util = require("util");
-const rimraf = require("rimraf");
 
+const rimraf = util.promisify(require("rimraf"));
 const readdir = util.promisify(fs.readdir);
 const writefile = util.promisify(fs.writeFile);
 const unlink = util.promisify(fs.unlink);
@@ -24,19 +24,13 @@ function randomIndex(length) {
     return Math.floor(Math.random() * (length));
 }
 
-exports.GetMatch = async function () {
-
-    console.log("GetMatch");
-
-};
-
+// Get an image from a match folder
 exports.GetImg = async function (Match) {
-    // Get an image from a match folder
     
     // Create the path
     const ImgPath = Match
 
-    console.log("GetImg: ",Match)
+    //console.log("GetImg: ",Match)
 
     // Read all images in the folder
     var err,Images = await readdir(ImgPath);
@@ -46,6 +40,7 @@ exports.GetImg = async function (Match) {
         throw err;
     }
 
+    // Filter out the lock file and the garbage .DS_Store files that MacOS automatically creates
     Images = Images.filter((value,index,arr) => {
         return !(value.includes("Lock")) && !(value.includes("DS"))
     });
@@ -57,6 +52,7 @@ exports.GetImg = async function (Match) {
     
     // Select the smallest number
     const ImgName = Images[0];
+
     //console.log(ImgName);
 
     // Return the image path
@@ -64,12 +60,12 @@ exports.GetImg = async function (Match) {
     
 };
 
+// Get a random untagged match that isn't currently locked.
 exports.GetRandomMatch =  function () {
-    console.log("GetRandomMatch")
+    //console.log("GetRandomMatch")
 
     // Set up vars
     const Source = path.join(DB,"/Untagged")
-
     var Match = undefined
 
     // Read the source directory and get all of the folders inside
@@ -97,8 +93,9 @@ exports.GetRandomMatch =  function () {
 
             // Check if the lock file has expired
             if (new Date(LockFile) < Date.now()) {
-
+                // The lock is expired. 
                 // Reset the lockfile with a new expiry, select this match, and break out of the loop
+
                 fs.writeFileSync(path.join(Location,"/Lock"),new Date(Date.now() + LockDuration).toJSON());
                 Match = Location;
                 break
@@ -132,53 +129,61 @@ exports.GetRandomMatch =  function () {
 };
 
 
+
+// Save json data from a client to a folder in the "Complete" directory.
 exports.SaveTag =  async function (Match, ImgNum, Data, SessionID) {
 
+    // Get the TBA match key from the path
     Match = path.basename(Match);
 
+    // Set up some convenient path consts
     const Source = path.join(DB,"/Untagged");
     const Dest = path.join(DB,"/Complete");
+    const MatchDir = path.join(Source,Match);
 
-    try {
-        if (new Date(fs.readFileSync(path.join(Source,Match,"/Lock"))) < Date.now()) {
-            console.warn("Lockfile has expired. Multiple users could edit this match simultaneously.");
-        }
-    } catch (err) {
-        console.log(err);
-        throw err;
+    
+    if (new Date(fs.readFileSync(path.join(Source,Match,"/Lock"))) < Date.now()) {
+        // The lockfile for this match is expired. The client's cookie should have expired before the lock file,
+        // but it hasn't. If this occurs, something has gone wrong.  
+        console.warn("\x1b[33m%s\x1b[0m","Lockfile has expired. Multiple users could edit this match simultaneously.");
     }
-
+    
+    // Create the directory path the data should be saved to. If it already exists, nothing will happen.
     fs.mkdir(path.join(Dest,Match), { recursive: true }, (err) => {
         if (err) throw err;
     });
 
+    // Add the client's session id and the current time to the json file the client submitted, just in case.
     Data["User"] = SessionID;
     Data["TimeSubmitted"] = new Date(Date.now()).toJSON();
 
-    writefile(path.join(Dest,Match,ImgNum),JSON.stringify(Data)).then(() => {
-        console.log("written");
-    }).catch((err) => {
+    // Stringify the json data and write it to a file with the same name as the image it refers to.
+    writefile(path.join(Dest,Match,ImgNum),JSON.stringify(Data)).catch((err) => {
+        // Something went wrong while trying to save the data.
         console.log(err);
     })
-
-    const MatchDir = path.join(Source,Match)
-
+    
+    // Delete the original image from the folder to save disc space.
     unlink(path.join(MatchDir,ImgNum+".jpg")).then(() => {
-        console.log("unlinked");
+        //console.log("unlinked");
 
+        // Read how many files (excluding the lock file and garbage .DS_Store files) are left in the match folder.
         const DirLength = fs.readdirSync(path.join(MatchDir)).filter((value,index,arr) => {
             return !(value.includes("Lock")) && !(value.includes("DS"))
         }).length 
 
         //console.log(DirLength);
 
+        // If there are no images left in the folder, delete it too.
         if (DirLength < 1) {
-            rimraf(MatchDir, function () { console.log('done'); });
+            rimraf(MatchDir).catch((err) => {
+                // rimraf failed to delete the empty match folder.
+                console.log(err);
+            });
         }
 
     }).catch((err) => {
+        // unlink failed to delete the image.
         console.log(err);
     });
-
-    return
 };
