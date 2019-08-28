@@ -13,12 +13,6 @@ const DB = path.join(__dirname,"../../MatchData");
 const AttemptLimit = 10;
 const LockDuration = 1 * 1000; // In milliseconds
 
-/*
-mv(path.join(DB,"/Untagged",Match,ImgName), path.join(DB,"/In_Progress",Match,ImgName),{mkdirp:true, clobber:false}, function(err) {
-    console.log(err);
-})
-*/
-
 //Grabs a random index between 0 and length
 function randomIndex(length) {
     return Math.floor(Math.random() * (length));

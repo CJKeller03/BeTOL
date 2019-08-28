@@ -2,7 +2,6 @@
 const express = require('express'),
   app = express(),
   port = process.env.PORT || 3000,
-  //Task = require('./api/models/todoListModel'), //created model loading here
   bodyParser = require('body-parser'),
   cookiesession = require('cookie-session');
 

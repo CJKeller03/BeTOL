@@ -10,7 +10,9 @@ exports.SendNewImg = function (req,res) {
     if (req.session.isNew) {
 
         // Client is new (or has cleared their cookies)
+
         //console.log("New session");
+        
         try {
             // Attempt to find an unlocked match for the client to tag
             Match = DBController.GetRandomMatch()
@@ -39,6 +41,7 @@ exports.SendNewImg = function (req,res) {
     // Get the next image that needs to be tagged for this match
     DBController.GetImg(Match).then(([ImgPath,ImgName]) => {
         //console.log(ImgName);
+
         // Set the client's "ImgNum" value to the index of the image returned. This will be used later when
         // the client sends the tag data back.
         req.session.ImgNum = ImgName;
@@ -99,6 +102,4 @@ exports.SaveTagData = function (req,res) {
             res.redirect("/")
         }
     }
-
-    //res.redirect("/api/tag");
 }
